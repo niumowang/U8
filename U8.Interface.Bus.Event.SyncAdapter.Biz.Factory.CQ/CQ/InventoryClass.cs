@@ -1,44 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using MSXML2;
-
-namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
+﻿namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
 {
-    public class InventoryClass:BizBase 
+    using ADODB;
+    using MSXML2;
+    using System;
+    using U8.Interface.Bus.Event.SyncAdapter.Biz;
+
+    public class InventoryClass : BizBase
     {
-
-
-        public InventoryClass(ref ADODB.Connection conn, IXMLDOMDocument2 doc, string ufConnStr, string _opertype)
-            : base(conn, ufConnStr)
+        public InventoryClass(ref Connection conn, IXMLDOMDocument2 doc, string ufConnStr, string _opertype) : base(conn, ufConnStr)
         {
-
-            oracleTableName = "MES_InventoryClass";   //目标表名
-            oraclePriKey = "cInvCCode";      //目标表主键 
-            fieldcmpTablename = "InventoryClass";
-            ufTableName = "InventoryClass";       //来源表名
-            ufPriKey = "cInvCCode";          //来源表主键
-            this.opertype = _opertype;
-
-            SetData(doc);
+            base.oracleTableName = "MES_InventoryClass";
+            base.oraclePriKey = "cInvCCode";
+            base.fieldcmpTablename = "InventoryClass";
+            base.ufTableName = "InventoryClass";
+            base.ufPriKey = "cInvCCode";
+            base.opertype = _opertype;
+            this.SetData(doc);
         }
 
-
-        #region 赋值操作
-
-        /// <summary>
-        /// 设置实体
-        /// </summary>
-        /// <param name="doc"></param>
         private void SetData(IXMLDOMDocument2 doc)
         {
-            lst = MakeMultiLineData(doc, fieldcmpTablename, ufTableName, ufPriKey, GetNodeValue(doc, "/inventoryclass/cinvccode"));
+            base.lst = base.MakeMultiLineData(doc, base.fieldcmpTablename, base.ufTableName, base.ufPriKey, base.GetNodeValue(doc, "/inventoryclass/cinvccode"));
         }
-
-
-        #endregion
-  
     }
 }
+

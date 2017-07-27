@@ -1,114 +1,90 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using MSXML2;
-
-
-namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ 
+﻿namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
 {
-    class Department : BizBase
+    using ADODB;
+    using MSXML2;
+    using System;
+    using System.Text;
+    using U8.Interface.Bus.Event.SyncAdapter.Biz;
+
+    internal class Department : BizBase
     {
-                          
-        //protected string oracleTableName = "MES_Department";   //目标表名
-        //protected string oraclePriKey = "cDepCode";      //目标表主键
-
-        //protected string fieldcmpTablename = "Department";
-
-        //protected string ufTableName = "Department";       //来源表名
-        //protected string ufPriKey = "cDepCode";          //来源表主键
-
-        public Department(ref ADODB.Connection conn, IXMLDOMDocument2 doc, string ufConnStr, string _opertype)
-            : base(conn, ufConnStr)
+        public Department(ref Connection conn, IXMLDOMDocument2 doc, string ufConnStr, string _opertype) : base(conn, ufConnStr)
         {
-
-            oracleTableName = "MES_CQ_Department";   //目标表名
-            oraclePriKey = "cDepCode";      //目标表主键 
-            fieldcmpTablename = "MES_CQ_Department"; 
-            ufTableName = "Department";       //来源表名
-            ufPriKey = "cDepCode";          //来源表主键
-            this.opertype = _opertype;
-
-            SetData(doc);
+            base.oracleTableName = "MES_CQ_Department";
+            base.oraclePriKey = "cDepCode";
+            base.fieldcmpTablename = "MES_CQ_Department";
+            base.ufTableName = "Department";
+            base.ufPriKey = "cDepCode";
+            base.opertype = _opertype;
+            this.SetData(doc);
         }
 
-
-        #region 赋值操作
-
-        /// <summary>
-        /// 设置实体
-        /// </summary>
-        /// <param name="doc"></param>
-        private void SetData(IXMLDOMDocument2 doc)
+        public override object Delete()
         {
-            lst = MakeMultiLineData(doc, fieldcmpTablename, ufTableName, ufPriKey, GetNodeValue(doc, "/department/cdepcode"));
+            base.sqlOper = new UFOper(BizBase.oraLinkName, base.ufConnStr, base.ufTableName, base.ufPriKey, base.oracleTableName, base.oraclePriKey, base.l, base.lst);
+            if (base.bNoCase)
+            {
+                base.sqlOper.Delete();
+            }
+            if (base.bSaveOper)
+            {
+                return this.Insert();
+            }
+            return 1;
         }
 
-
-
-
-        /// <summary>
-        /// 新增
-        /// </summary>
-        /// <returns></returns>
         public override object Insert()
         {
-
-            StringBuilder sb = new StringBuilder();
-            StringBuilder sbm = new StringBuilder();
-            sbm = this.CreateInsertString();
-            if (sbm.Length > 0)
+            StringBuilder builder = new StringBuilder();
+            StringBuilder builder2 = new StringBuilder();
+            StringBuilder builder3 = new StringBuilder();
+            builder2 = this.CreateInsertString();
+            if (builder2.Length > 0)
             {
-                sb.Append(" DECLARE @mainid AS INT ");
-                sb.Append(sbm);
-                sb.Append(" SELECT @mainid = @@IDENTITY ");
-                sb.Replace("main|##newguid", Guid.NewGuid().ToString());
-
+                builder.Append(" DECLARE @mainid AS INT ");
+                builder.Append(builder2);
+                builder.Append(" SELECT @mainid = @@IDENTITY ");
+                builder.Replace("main|##newguid", Guid.NewGuid().ToString());
             }
-
-            if (bNoCase)
+            if (base.bNoCase)
             {
-                base.Delete();  //清除旧记录
+                builder3 = this.CreateDeleteString();
             }
-            if (sb.Length > 0)
+            if (builder.Length > 0)
             {
-                return ExecSql(sb.ToString());
+                if (builder3.Length > 0)
+                {
+                    return this.ExecSql(builder3.ToString() + " " + builder.ToString());
+                }
+                return this.ExecSql(builder.ToString());
             }
             return null;
         }
 
+        private void SetData(IXMLDOMDocument2 doc)
+        {
+            base.lst = base.MakeMultiLineData(doc, base.fieldcmpTablename, base.ufTableName, base.ufPriKey, base.GetNodeValue(doc, "/department/cdepcode"));
+        }
 
-        /// <summary>
-        /// 修改
-        /// </summary>
-        /// <returns></returns>
         public override object Update()
         {
-            if (Synch.Equals("UFOper"))
+            if (base.Synch.Equals("UFOper"))
             {
-                sqlOper = new UFOper(oraLinkName, ufConnStr, ufTableName, ufPriKey, oracleTableName, oraclePriKey, l, lst);
-                if (bNoCase)
+                base.sqlOper = new UFOper(BizBase.oraLinkName, base.ufConnStr, base.ufTableName, base.ufPriKey, base.oracleTableName, base.oraclePriKey, base.l, base.lst);
+                if (base.bNoCase)
                 {
-                    sqlOper.Delete();  //清除旧记录
+                    base.sqlOper.Delete();
                 }
                 return this.Insert();
             }
-            else if (Synch.Equals("LinkOper"))
+            if (base.Synch.Equals("LinkOper"))
             {
-                sqlOper = new LinkOper(oraLinkName, ufConnStr, ufTableName, ufPriKey, oracleTableName, oraclePriKey, l, lst);
-                return sqlOper.Update();
+                base.sqlOper = new LinkOper(BizBase.oraLinkName, base.ufConnStr, base.ufTableName, base.ufPriKey, base.oracleTableName, base.oraclePriKey, base.l, base.lst);
+                return base.sqlOper.Update();
             }
-            else
-            {
-                sqlOper = new OracleOper(oraConnStr, oracleTableName, oraclePriKey, l, lst);
-                return sqlOper.Update();
-            }
+            base.sqlOper = new OracleOper(base.oraConnStr, base.oracleTableName, base.oraclePriKey, base.l, base.lst);
+            return base.sqlOper.Update();
         }
-
-
-        #endregion
-
-
     }
 }
+

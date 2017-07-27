@@ -1,130 +1,102 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data; 
-using MSXML2;
-
-
-
-namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
+﻿namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
 {
-    public class PU_ArrivalVouch : U8.Interface.Bus.Event.SyncAdapter.Biz.BizBase
+    using ADODB;
+    using MSXML2;
+    using System;
+    using System.Data;
+    using System.Text;
+    using U8.Interface.Bus.Event.SyncAdapter.Biz;
+
+    public class PU_ArrivalVouch : BizBase
     {
-
         private string _ccode;
-        PU_ArrivalVouchs detailBiz;
+        private PU_ArrivalVouchs detailBiz;
 
-        public PU_ArrivalVouch(ref ADODB.Connection conn, IXMLDOMDocument2 doc, IXMLDOMDocument2 docbody, string ufConnStr, string _opertype)
-            : base(conn, ufConnStr)
+        public PU_ArrivalVouch(ref Connection conn, IXMLDOMDocument2 doc, IXMLDOMDocument2 docbody, string ufConnStr, string _opertype) : base(conn, ufConnStr)
         {
-
-            oracleTableName = "MES_CQ_PU_ArrivalVouch";   //目标表名
-            oraclePriKey = "ccode";      //目标表逻辑主键 
-            fieldcmpTablename = "MES_CQ_PU_ArrivalVouch";
-            ufTableName = "PU_ArrivalVouch"; // "SaleOrderQ";       //来源表名
-            ufPriKey = "ccode";          //来源表主键
-            this._ccode = ((IXMLDOMElement)doc.selectSingleNode("/xml/rs:data/z:row")).getAttribute("ccode").ToString(); //GetNodeValue(doc, "/PU_ArrivalVouch/ccode");
-            this.opertype = _opertype; 
+            base.oracleTableName = "MES_CQ_PU_ArrivalVouch";
+            base.oraclePriKey = "ccode";
+            base.fieldcmpTablename = "MES_CQ_PU_ArrivalVouch";
+            base.ufTableName = "PU_ArrivalVouch";
+            base.ufPriKey = "ccode";
+            this._ccode = ((IXMLDOMElement) doc.selectSingleNode("/xml/rs:data/z:row")).getAttribute("ccode").ToString();
+            base.opertype = _opertype;
         }
 
-
-
-        #region 赋值操作
-
-        /// <summary>
-        /// 设置实体
-        /// </summary>
-        /// <param name="doc"></param>
-        private void SetData(string ccode)
-        { 
-            detailBiz = new PU_ArrivalVouchs(ref conn, ccode, ufConnStr, opertype);
-            detailBiz.lst = detailBiz.MakeMultiLineData(null, detailBiz.fieldcmpTablename, detailBiz.ufTableName, detailBiz.ufPriKey, ccode);
-            
+        public override object Delete()
+        {
+            StringBuilder builder = new StringBuilder();
+            this.SetData(this._ccode);
+            if (base.bNoCase)
+            {
+                StringBuilder builder2 = new StringBuilder();
+                builder2.Append(this.detailBiz.CreateDeleteString());
+                if (builder2.Length > 0)
+                {
+                    builder.Append(builder2);
+                }
+            }
+            if (base.bSaveOper)
+            {
+                StringBuilder builder3 = new StringBuilder();
+                builder3.Append(this.detailBiz.CreateInsertString());
+                if (builder3.Length > 0)
+                {
+                    builder.Append(builder3);
+                }
+            }
+            if (builder.Length > 0)
+            {
+                return this.ExecSql(builder.ToString());
+            }
+            return 1;
         }
 
+        private object DeleteLog()
+        {
+            StringBuilder builder = new StringBuilder();
+            if (this.detailBiz.lst.Count == 0)
+            {
+                this.SetData(this._ccode);
+            }
+            builder.Append(this.detailBiz.CreateDeleteString());
+            if (builder.Length > 0)
+            {
+                return this.ExecSql(builder.ToString());
+            }
+            return null;
+        }
 
-
-        /// <summary>
-        /// 获取来源档案数据
-        /// </summary>
-        /// <param name="sourceTableName"></param>
-        /// <param name="sourceKeyName"></param>
-        /// <param name="sourceKeyValue"></param>
-        /// <param name="colNames"></param>
-        /// <returns></returns>
         public override DataTable GetSourceData(string sourceTableName, string sourceKeyName, string sourceKeyValue, string colNames)
         {
-            string _tempsourcetable = "(select ccode,cCusCode,cCusName, cBusType,t.cstcode as cStCode,cStName,t.cDepCode as cDepCode,cDepName,";
-            _tempsourcetable += " cPersonCode,p.cPsn_Name as cPersonName   from PU_ArrivalVouch t with(nolock) left join department d with(nolock) on t.cDepCode = d.cDepCode ";
-            _tempsourcetable += " left join hr_hi_person p with(nolock) on t.cPersonCode = p.cPsn_Num ";
-            _tempsourcetable += " left join SaleType st with(nolock) on st.cSTCode = t.cSTCode ) tmpt ";
-
-            string sql = "SELECT " + colNames + " FROM " + _tempsourcetable + "  WHERE ccode ='" + _ccode + "' ";
-            DataTable dtValue = new DataTable();
-            dtValue = UFSelect(sql);
-            return dtValue;
+            string str = "(select ccode,cCusCode,cCusName, cBusType,t.cstcode as cStCode,cStName,t.cDepCode as cDepCode,cDepName,";
+            str = (str + " cPersonCode,p.cPsn_Name as cPersonName   from PU_ArrivalVouch t with(nolock) left join department d with(nolock) on t.cDepCode = d.cDepCode ") + " left join hr_hi_person p with(nolock) on t.cPersonCode = p.cPsn_Num " + " left join SaleType st with(nolock) on st.cSTCode = t.cSTCode ) tmpt ";
+            string str2 = "SELECT " + colNames + " FROM " + str + "  WHERE ccode ='" + this._ccode + "' ";
+            DataTable table = new DataTable();
+            return base.UFSelect(str2);
         }
-
-
 
         public override object Insert()
         {
-            SetData(_ccode); 
-            StringBuilder sb = new StringBuilder(); 
-            sb.Append(detailBiz.CreateInsertString()); 
-
-            if (bNoCase)
+            this.SetData(this._ccode);
+            StringBuilder builder = new StringBuilder();
+            builder.Append(this.detailBiz.CreateInsertString());
+            if (base.bNoCase)
             {
-                DeleteLog();  //清除旧记录
+                this.DeleteLog();
             }
-            if (sb.Length > 0)
+            if (base.bSaveOper && (builder.Length > 0))
             {
-                return ExecSql(sb.ToString());
+                return this.ExecSql(builder.ToString());
             }
             return null;
         }
 
-        /// <summary>
-        /// 删除
-        /// 真正操作为新增删除操作
-        /// </summary>
-        /// <returns></returns>
-        public override object Delete()
+        private void SetData(string ccode)
         {
-            StringBuilder sb = new StringBuilder();
-            SetData(_ccode); 
-            sb.Append(detailBiz.CreateDeleteString());
-            if (sb.Length > 0)
-            {
-                return ExecSql(sb.ToString());
-            }
-            return null;
+            this.detailBiz = new PU_ArrivalVouchs(ref this.conn, ccode, base.ufConnStr, base.opertype);
+            this.detailBiz.lst = this.detailBiz.MakeMultiLineData(null, this.detailBiz.fieldcmpTablename, this.detailBiz.ufTableName, this.detailBiz.ufPriKey, ccode);
         }
-
-
-        /// <summary>
-        /// 删除中间表数据
-        /// </summary>
-        /// <returns></returns>
-        private object DeleteLog()
-        {
-            StringBuilder sb = new StringBuilder();
-            if (detailBiz.lst.Count == 0)
-            {
-                SetData(_ccode);
-            } 
-            sb.Append(detailBiz.CreateDeleteString()); 
-
-            if (sb.Length > 0)
-            {
-                return ExecSql(sb.ToString());
-            }
-            return null;
-        }
-
-        #endregion
-
-
     }
 }
+

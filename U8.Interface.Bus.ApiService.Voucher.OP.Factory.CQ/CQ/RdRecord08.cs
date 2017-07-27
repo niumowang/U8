@@ -1,80 +1,208 @@
-﻿using System;
-using System.Data;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data.SqlClient;
-
-using U8.Interface.Bus;
-using U8.Interface.Bus.Comm;
-using U8.Interface.Bus.ApiService;
-
-using U8.Interface.Bus.ApiService.Model;
-using U8.Interface.Bus.ApiService.BLL;
-using U8.Interface.Bus.ApiService.DAL;
-using U8.Interface.Bus.DBUtility;
-
-
-namespace U8.Interface.Bus.ApiService.Voucher.OP.Factory.CQ
+﻿namespace U8.Interface.Bus.ApiService.Voucher.OP.Factory.CQ
 {
-    /// <summary>
-    /// 其它出库单 (HY_DZ_K7_DLLReflect预置的op类)
-    /// </summary>
-    public class RdRecord09 : StockOP
+    using System;
+    using System.Collections.Generic;
+    using System.Data;
+    using U8.Interface.Bus;
+    using U8.Interface.Bus.ApiService.BLL;
+    using U8.Interface.Bus.ApiService.DAL;
+    using U8.Interface.Bus.ApiService.Model;
+    using U8.Interface.Bus.Comm;
+    using U8.Interface.Bus.DBUtility;
+
+    public class RdRecord08 : StockOP
     {
-        private int tasktype = 0;
-
-        /// <summary>
-        /// 目标
-        /// </summary>
-        private string cardNo = "0302";
-        private string headtable = "MES_CQ_RdRecord09";
-        private string bodytable = "MES_CQ_RdRecords09";
-
-        /// <summary>
-        /// 来源
-        /// </summary>
+        private string bodytable = "MES_CQ_RdRecords08";
+        private string cardNo = "0301";
+        private string errordescColumnName = "cerrordesc";
+        private string headtable = "MES_CQ_RdRecord08";
+        private string sourceBodyTable = "";
         private string sourceCardNo = "";
-        string sourceHeadTable = "";
-        string sourceBodyTable = "";
-
-
+        private string sourceHeadTable = "";
         private string taskStatusflagColName = "operflag";
- 
+        private int tasktype = 0;
+        private string voucherNoColumnName = "cRdCode";
 
-        public override string SetTableName()
+        public override bool CheckAuditStatus(string strVoucherNo, string strConn)
         {
-            return "RdRecord09";
+            return false;
         }
 
-        public override string SetVouchType()
+        public override string GetCodeorID(string strID, BaseData bd, string codeorid)
         {
-            return "09";
+            string str = string.Empty;
+            if (codeorid == "id")
+            {
+                str = "select isnull(id,'') from rdrecord08  with(nolock)  where ccode='" + strID + "'";
+            }
+            if (codeorid == "code")
+            {
+                str = "select isnull(ccode,'') from rdrecord08  with(nolock)  where id='" + strID + "'";
+            }
+            APIData data = bd as APIData;
+            DbHelperSQLP rsqlp = new DbHelperSQLP(data.get_ConnectInfo().get_Constring());
+            string str2 = Common.NullToString(rsqlp.GetSingle(str));
+            Common.ErrorMsg(str2, "未能获其它入库单ID或单号");
+            return str2;
         }
-  
+
+        public override Synergismlogdt GetFirst(Synergismlogdt dt)
+        {
+            Synergismlogdt synergismlogdt = new Synergismlogdt();
+            synergismlogdt.set_Cvouchertype(this.sourceCardNo);
+            synergismlogdt.set_Id(dt.get_Id());
+            synergismlogdt.set_Ilineno(1);
+            synergismlogdt.set_Autoid(dt.get_Id());
+            synergismlogdt.set_TaskType(this.tasktype);
+            return synergismlogdt;
+        }
+
+        public override Synergismlog GetLogModel(string autoid)
+        {
+            Synergismlog synergismlog = new Synergismlog();
+            synergismlog.set_Id(autoid);
+            synergismlog.set_Cvouchertype(this.cardNo);
+            synergismlog.set_Cstatus("未处理");
+            DataSet set = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + this.headtable + " t with(nolock)  WHERE t.id = '" + autoid + "' ");
+            for (int i = 0; i < set.Tables[0].Rows.Count; i++)
+            {
+                synergismlog.set_Cvoucherno(set.Tables[0].Rows[i]["cRdCode"].ToString());
+                synergismlog.set_Id(set.Tables[0].Rows[i]["id"].ToString());
+            }
+            return synergismlog;
+        }
+
+        public override Synergismlogdt GetModel(string autoid)
+        {
+            Synergismlogdt synergismlogdt = new Synergismlogdt();
+            synergismlogdt.set_Autoid(autoid);
+            synergismlogdt.set_Id(autoid);
+            synergismlogdt.set_Cvouchertype(this.cardNo);
+            synergismlogdt.set_Ilineno(2);
+            synergismlogdt.set_TaskType(this.tasktype);
+            synergismlogdt.set_Cstatus("未处理");
+            DataSet set = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + this.headtable + " t with(nolock)  WHERE t.id = " + Convert.ConvertDbValueFromPro(autoid, "string"));
+            for (int i = 0; i < set.Tables[0].Rows.Count; i++)
+            {
+                synergismlogdt.set_Cvoucherno(set.Tables[0].Rows[i]["cRdCode"].ToString());
+                synergismlogdt.set_Autoid(set.Tables[0].Rows[i]["id"].ToString());
+                synergismlogdt.set_Id(set.Tables[0].Rows[i]["id"].ToString());
+                synergismlogdt.set_Cdealmothed(int.Parse(set.Tables[0].Rows[i]["opertype"].ToString()) + 1);
+            }
+            return synergismlogdt;
+        }
+
+        public override List<Synergismlogdt> GetNext(Synergismlogdt dt)
+        {
+            List<Synergismlogdt> list = new List<Synergismlogdt>();
+            if (dt.get_Ilineno() == 1)
+            {
+                Synergismlogdt item = new Synergismlogdt();
+                item.set_Id(dt.get_Id());
+                item.set_Cvouchertype(this.cardNo);
+                item.set_Ilineno(2);
+                item.set_TaskType(this.tasktype);
+                item.set_Cstatus("未处理");
+                item.set_Isaudit(1);
+                DataSet set = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + this.headtable + " t with(nolock)  WHERE t.id = " + Convert.ConvertDbValueFromPro(dt.get_Id(), "string"));
+                for (int i = 0; i < set.Tables[0].Rows.Count; i++)
+                {
+                    item.set_Cvoucherno(set.Tables[0].Rows[i]["cRdCode"].ToString());
+                    item.set_Autoid(set.Tables[0].Rows[i]["id"].ToString());
+                    item.set_Cdealmothed(int.Parse(set.Tables[0].Rows[i]["opertype"].ToString()) + 1);
+                }
+                list.Add(item);
+                return list;
+            }
+            return list;
+        }
+
+        public override Synergismlogdt GetPrevious(Synergismlogdt dt)
+        {
+            if (dt.get_Cvouchertype() == this.cardNo)
+            {
+                Synergismlogdt synergismlogdt = new Synergismlogdt();
+                synergismlogdt.set_Cvouchertype(this.sourceCardNo);
+                synergismlogdt.set_Id(dt.get_Id());
+                synergismlogdt.set_TaskType(this.tasktype);
+                return synergismlogdt;
+            }
+            return null;
+        }
+
+        public override TaskList GetTask()
+        {
+            string str = "SELECT * FROM " + this.headtable + " WHERE operflag = 0 ";
+            string str2 = "";
+            DataTable table = new DataTable();
+            table = DbHelperSQL.Query(str).Tables[0];
+            if ((table == null) || (table.Rows.Count == 0))
+            {
+                return null;
+            }
+            TaskList list = new TaskList();
+            for (int i = 0; i < table.Rows.Count; i++)
+            {
+                Exception exception;
+                Task item = new Task();
+                VoucherType type = new VoucherType();
+                type.set_SourceCardNo(this.sourceCardNo);
+                type.set_CardNo(this.cardNo);
+                type.set_VoucherName("无");
+                item.VouchType = type;
+                item.taskType = 0;
+                item.OperType = (int) table.Rows[i]["OperType"];
+                try
+                {
+                    item.id = table.Rows[i]["id"].ToString();
+                }
+                catch (Exception exception1)
+                {
+                    exception = exception1;
+                    Common.ErrorMsg(SysInfo.productName, "id 值出错！");
+                }
+                try
+                {
+                    item.OperType = int.Parse(table.Rows[i]["opertype"].ToString());
+                }
+                catch (Exception exception2)
+                {
+                    exception = exception2;
+                    Common.ErrorMsg(SysInfo.productName, "opertype 值出错！");
+                }
+                list.Add(item);
+                str2 = str2 + "'" + item.id + "'";
+            }
+            if (!string.IsNullOrEmpty(str2))
+            {
+                DbHelperSQL.ExecuteSql(" update " + this.headtable + " set " + this.taskStatusflagColName + " = 2 where id in (" + str2 + ") ");
+            }
+            return list;
+        }
+
         public override string SetApiAddressAdd()
         {
-            return "U8API/otherout/Add";
+            return "U8API/otherin/Add";
         }
 
         public override string SetApiAddressAudit()
         {
-            return "U8API/otherout/Audit";
+            return "U8API/otherin/Audit";
         }
 
         public override string SetApiAddressCancelAudit()
         {
-            return "U8API/otherout/CancelAudit";
+            return "U8API/otherin/CancelAudit";
         }
 
         public override string SetApiAddressDelete()
         {
-            return "U8API/otherout/Delete";
+            return "U8API/otherin/Delete";
         }
 
         public override string SetApiAddressLoad()
         {
-            return "U8API/otherout/Load";
+            return "U8API/otherin/Load";
         }
 
         public override string SetApiAddressUpdate()
@@ -82,385 +210,45 @@ namespace U8.Interface.Bus.ApiService.Voucher.OP.Factory.CQ
             throw new NotImplementedException();
         }
 
-
-        public override TaskList GetTask()
+        public override DataSet SetFromTabet(Synergismlogdt dt, Synergismlogdt pdt, APIData apidata)
         {
-            string sql = "SELECT * FROM " + headtable + " WHERE operflag = 0 ";
-            string curid = "";  
-            DataTable dt = new DataTable();
-            dt = DbHelperSQL.Query(sql).Tables[0];
-            if (null == dt || dt.Rows.Count == 0)
-            {
-                return null;
-            }
-            TaskList tl = new TaskList();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Task t = new Task();
-                VoucherType v = new VoucherType();
-                v.SourceCardNo = sourceCardNo;
-                //v.SourceVoucherNo = dt.Rows[i][""].ToString();
-                v.CardNo = cardNo;
-                v.VoucherName = "无";
-                t.VouchType = v;
-                t.taskType = 0;   //MES接口任务  
-                t.OperType = (int)dt.Rows[i]["OperType"];
-
-                try
-                {
-                    t.id = dt.Rows[i]["id"].ToString();  //int.Parse(dt.Rows[i]["id"].ToString());
-                }
-                catch (Exception ee)
-                {
-                    BLL.Common.ErrorMsg(SysInfo.productName, "id 值出错！");
-                }
-                try
-                {
-                    t.OperType = int.Parse(dt.Rows[i]["opertype"].ToString());
-                }
-                catch (Exception ee)
-                {
-                    BLL.Common.ErrorMsg(SysInfo.productName, "opertype 值出错！");
-                }
-                tl.Add(t);
-                curid += "'" + t.id + "'";
-            }
-            if (!string.IsNullOrEmpty(curid))
-            {
-                string msql = " update " + headtable + " set " + taskStatusflagColName + " = 2 where id in (" + curid + ") ";
-                DbHelperSQL.ExecuteSql(msql);
-            }
-            return tl;
+            ConnectInfo connectInfo = ClassFactory.GetITaskLogDetailDAL(apidata.get_TaskType()).GetConnectInfo(pdt);
+            string str2 = ((("select " + " lt.cvencode as MES_cvencode,") + " '" + DateTime.Now.ToString(SysInfo.dateFormat) + "' as ddate ") + ",'" + DateTime.Now.ToString(SysInfo.datetimeFormat) + "' as dnmaketime, ") + " lt.cRdCode as cCode ," + " lt.cWhCode as MES_cWhCode,lt.cRdStyleCode as MES_cRdCode,lt.cDepCode as MES_cDepCode ";
+            string str = str2 + " from   " + this.bodytable + " lb with(nolock) INNER JOIN " + this.headtable + " lt with(nolock) on lt.id = lb.id where lt.id ='" + pdt.get_Id() + "' ";
+            DataSet set = new DbHelperSQLP(connectInfo.get_Constring()).Query(str);
+            Common.ErrorMsg(set, "未能获取 表头信息");
+            return set;
         }
 
-
-
-        /// <summary>
-        /// 得到一个对象实体
-        /// </summary>
-        /// <param name="autoid"> ID</param>
-        /// <returns></returns>
-        public override Model.Synergismlog GetLogModel(string autoid)
+        public override DataSet SetFromTabets(Synergismlogdt dt, Synergismlogdt pdt, APIData apidata)
         {
-            Model.Synergismlog tmpd = new Synergismlog(); 
-            tmpd.Id = autoid;
-            tmpd.Cvouchertype = cardNo; 
-            tmpd.Cstatus = U8.Interface.Bus.ApiService.DAL.Constant.SynerginsLog_Cstatus_NoDeal;
-            DataSet ds = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + headtable + " t with(nolock)  WHERE t.id = " + 
-                U8.Interface.Bus.Comm.Convert.ConvertDbValueFromPro(autoid,"string"));
-            for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
-            {
-                tmpd.Cvoucherno = ds.Tables[0].Rows[i]["cRdCode"].ToString();
-                tmpd.Id = ds.Tables[0].Rows[i]["id"].ToString(); //int.Parse(ds.Tables[0].Rows[i]["id"].ToString());
-                //tmpd.Cdealmothed = int.Parse(ds.Tables[0].Rows[i]["opertype"].ToString()) + 1; // 0(自动生单/自动审核) 1增 2修改 3删
-            }
-            return tmpd;
+            ConnectInfo connectInfo = ClassFactory.GetITaskLogDetailDAL(apidata.get_TaskType()).GetConnectInfo(pdt);
+            string str2 = (("select  " + " lt.cWhCode as MES_cWhCode,lt.cRdStyleCode as MES_cRdCode,lt.cDepCode as MES_cDepCode," + " lt.cvencode as MES_t_cvencode,") + " lb.cvencode as MES_cvencode," + " CASE lb.opertype WHEN 0 THEN 'A' WHEN 1 THEN 'M' WHEN '2' THEN 'D' ELSE 'A' END as editprop, ") + " lb.cinvcode as mes_cinvcode   " + " ,lb.iquantity as MES_iquantity   ";
+            string str = str2 + " from   " + this.bodytable + " lb with(nolock) INNER JOIN " + this.headtable + " lt with(nolock) on lt.id = lb.id where lt.id ='" + pdt.get_Id() + "' ";
+            DataSet set = new DbHelperSQLP(connectInfo.get_Constring()).Query(str);
+            Common.ErrorMsg(set, "未能获取 表体信息");
+            return set;
         }
 
-
-        /// <summary>
-        /// 得到一个对象实体
-        /// </summary>
-        /// <param name="autoid">子任务ID</param>
-        /// <returns></returns>
-        public override Model.Synergismlogdt GetModel(string autoid)
+        public override string SetTableName()
         {
-            Model.Synergismlogdt tmpd = new Synergismlogdt();
-            tmpd.Autoid = autoid.ToString();
-            tmpd.Id = autoid.ToString();
-            tmpd.Cvouchertype = cardNo;
-            tmpd.Ilineno = 2;
-            tmpd.Cstatus = U8.Interface.Bus.ApiService.DAL.Constant.SynerginsLog_Cstatus_NoDeal; 
-            DataSet ds = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + headtable + " t with(nolock)  WHERE t.id = " + U8.Interface.Bus.Comm.Convert.ConvertDbValueFromPro(autoid,"string"));
-            for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
-            {
-                tmpd.Cvoucherno = ds.Tables[0].Rows[i]["cRdCode"].ToString();
-                tmpd.Autoid = ds.Tables[0].Rows[i]["id"].ToString(); // int.Parse(ds.Tables[0].Rows[i]["id"].ToString());
-                tmpd.Id = ds.Tables[0].Rows[i]["id"].ToString(); // int.Parse(ds.Tables[0].Rows[i]["id"].ToString());
-                tmpd.Cdealmothed = int.Parse(ds.Tables[0].Rows[i]["opertype"].ToString()) + 1; // 0(自动生单/自动审核) 1增 2修改 3删
-            }
-            return tmpd;
+            return "RdRecord08";
         }
 
-
-
-        public override Synergismlogdt GetFirst(Synergismlogdt dt)
+        public override string SetVouchType()
         {
-            string sourceCodeColName = "";
-
-            Model.Synergismlogdt fdt = new Model.Synergismlogdt();
-            fdt.Cvouchertype = sourceCardNo;
-            fdt.Id = dt.Id;
-            fdt.Ilineno = 1;
-            fdt.Autoid = dt.Id;
-            //DataSet ds = DbHelperSQL.Query("SELECT " + sourceCodeColName + " FROM " + bodytable + " with(nolock) WHERE ID = " + dt.Id);
-            //for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
-            //{
-                //fdt.Cvoucherno = ds.Tables[0].Rows[i][sourceCodeColName].ToString();
-                
-            //}
-            return fdt;
-
+            return "08";
         }
 
-        /// <summary>
-        /// 获取上一结点
-        /// </summary>
-        /// <param name="dt"></param>
-        /// <returns></returns>
-        public override Model.Synergismlogdt GetPrevious(Model.Synergismlogdt dt)
+        public override int Update(Synergismlog dt)
         {
-
-            string sourceCodeColName = "";
-
-            if (dt.Cvouchertype == cardNo)
-            {
-                Model.Synergismlogdt pdt = new Model.Synergismlogdt();
-                pdt.Cvouchertype = sourceCardNo;
-                pdt.Id = dt.Id;
-                //DataSet ds = DbHelperSQL.Query("SELECT " + sourceCodeColName + " FROM " + bodytable + " with(nolock) WHERE ID = " + dt.Id);
-                //for (int i = 0; i < ds.Tables[0].Rows.Count;i++ )
-                //{
-                //    pdt.Cvoucherno = ds.Tables[0].Rows[i][sourceCodeColName].ToString();
-                //    //pdt.Autoid = null;
-                //} 
-                return pdt;
-            }
-            else
-            {
-                return null;
-            }
+            return Utility.UpdateMainLog(dt, this.headtable, this.voucherNoColumnName, this.taskStatusflagColName, this.errordescColumnName);
         }
 
-
-        /// <summary>
-        /// 获取下一任务结点
-        /// </summary>
-        /// <param name="dt"></param>
-        /// <returns></returns>
-        public override List<Model.Synergismlogdt> GetNext(Model.Synergismlogdt dt)
-        { 
-            List<Model.Synergismlogdt> logdt = new List<U8.Interface.Bus.ApiService.Model.Synergismlogdt>();
-            if (dt.Ilineno == 1)
-            {
-                Model.Synergismlogdt tmpd = new Synergismlogdt();
-                tmpd.Id = dt.Id;
-                tmpd.Cvouchertype = cardNo;
-                tmpd.Ilineno = 2;
-                tmpd.TaskType = tasktype;
-                tmpd.Cstatus = U8.Interface.Bus.ApiService.DAL.Constant.SynerginsLog_Cstatus_NoDeal;
-                DataSet ds = DbHelperSQL.Query("SELECT t.cRdCode,t.id,t.opertype FROM " + headtable + " t with(nolock)  WHERE t.id = " + U8.Interface.Bus.Comm.Convert.ConvertDbValueFromPro(dt.Id,"string"));
-           
-                for (int i = 0; i < ds.Tables[0].Rows.Count; i++)
-                {
-                    tmpd.Cvoucherno = ds.Tables[0].Rows[i]["cRdCode"].ToString();
-                    tmpd.Autoid = ds.Tables[0].Rows[i]["id"].ToString();  //int.Parse(ds.Tables[0].Rows[i]["id"].ToString());
-                    tmpd.Cdealmothed = int.Parse(ds.Tables[0].Rows[i]["opertype"].ToString()) + 1; // 0(自动生单/自动审核) 1增 2修改 3删
-                } 
-                
-                logdt.Add(tmpd);
-                return logdt;
-            }
-            else
-            {
-                return null;
-            }        
-        }
-
-
-
-        /// <summary>
-        /// 获取来源表头数据
-        /// </summary>
-        /// <param name="dt"></param>
-        /// <param name="pdt"></param>
-        /// <param name="apidata"></param>
-        /// <returns></returns>
-        public override System.Data.DataSet SetFromTabet(Model.Synergismlogdt dt, Model.Synergismlogdt pdt, Model.APIData apidata)
+        public override int Update(Synergismlogdt dt)
         {
-
-
-            ApiService.DAL.TaskLogFactory.ITaskLogDetail dtdal = ClassFactory.GetITaskLogDetailDAL(apidata.TaskType);
-            Model.ConnectInfo cimodel = dtdal.GetConnectInfo(pdt);
-
-            string sql = "select ";  
-            sql += " lt.cvencode as MES_cvencode,"; 
-            sql += " '" + System.DateTime.Now.ToString(SysInfo.dateFormat) + "' as ddate ";   //入库日期
-            sql += ",'" + System.DateTime.Now.ToString(SysInfo.datetimeFormat) + "' as dnmaketime, ";   //制单时间
-            sql += " lt.cRdCode as cCode ,";
-            sql += " lt.cWhCode as MES_cWhCode,lt.cRdStyleCode as MES_cRdCode,lt.cDepCode as MES_cDepCode ";
-            //sql += " ,lt.cPersonCode as MES_cPersonCode ";
-            sql += " from   " + bodytable + " lb with(nolock) INNER JOIN " + headtable + " lt with(nolock) on lt.id = lb.id where lt.id ='" + pdt.Id + "' ";
-            
-            DbHelperSQLP help = new DbHelperSQLP(cimodel.Constring);
-            DataSet ds = help.Query(sql);
-            BLL.Common.ErrorMsg(ds, "未能获取 表头信息");
-            return ds;
- 
+            return Utility.UpdateDetailLog(dt, this.headtable, this.voucherNoColumnName, this.taskStatusflagColName, this.errordescColumnName);
         }
-
-  
-        /// <summary>
-        /// 获取来源表体数据
-        /// </summary>
-        /// <param name="dt"></param>
-        /// <param name="pdt"></param>
-        /// <param name="apidata"></param>
-        /// <returns></returns>
-        public override System.Data.DataSet SetFromTabets(Model.Synergismlogdt dt, Model.Synergismlogdt pdt, Model.APIData apidata)
-        {
- 
-            ApiService.DAL.TaskLogFactory.ITaskLogDetail dtdal = ClassFactory.GetITaskLogDetailDAL(apidata.TaskType);  //new ApiService.DAL.SynergismLogDt();
-            Model.ConnectInfo cimodel = dtdal.GetConnectInfo(pdt);
-            string sql = "select  ";
-            sql += " lt.cWhCode as MES_cWhCode,lt.cRdStyleCode as MES_cRdCode,lt.cDepCode as MES_cDepCode,";
-            //sql += " lt.cPersonCode as MES_cPersonCode, ";
-            sql += " lt.cvencode as MES_cvencode,"; 
-            sql += " CASE lb.opertype WHEN 0 THEN 'A' WHEN 1 THEN 'M' WHEN '2' THEN 'D' ELSE 'A' END as editprop, ";
-            sql += " lb.cinvcode as mes_cinvcode   ";
-            sql += " ,lb.iquantity as MES_iquantity   ";
-            sql += " from   " + bodytable + " lb with(nolock) INNER JOIN " + headtable + " lt with(nolock) on lt.id = lb.id where lt.id ='" + pdt.Id + "' ";
-            
-            DbHelperSQLP help = new DbHelperSQLP(cimodel.Constring);
-            DataSet ds = help.Query(sql);
-            BLL.Common.ErrorMsg(ds, "未能获取 表体信息");
-            return ds;
-        }
- 
-
-        /// <summary>
-        /// ID CODE 互查
-        /// </summary>
-        /// <param name="strID"></param>
-        /// <param name="bd"></param>
-        /// <param name="codeorid"></param>
-        /// <returns></returns>
-        public override string GetCodeorID(string strID, BaseData bd, string codeorid)
-        {
-            string sqlstr = string.Empty;
-            if (codeorid == "id")
-            {
-                sqlstr = "select isnull(id,'') from RdRecord09  with(nolock)  where ccode='" + strID + "'";
-            }
-            if (codeorid == "code")
-            {
-                sqlstr = "select isnull(ccode,'') from RdRecord09  with(nolock)  where id='" + strID + "'";
-            }
-            Model.APIData apidata = bd as Model.APIData;
-
-            DBUtility.DbHelperSQLP sqlp = new DBUtility.DbHelperSQLP(apidata.ConnectInfo.Constring);
-            string ret = sqlp.GetSingle(sqlstr).NullToString();
-            BLL.Common.ErrorMsg(ret, "未能获其它出库单ID或单号");
-            return ret;
-        }
-
-        public override bool CheckAuditStatus(string strVoucherNo, string strConn)
-        {
-            return false;
-        }
-
-        #region update  log
-
-
-        public override int Update(Model.Synergismlog dt)
-        { 
-            DateTime? finishTime = new DateTime?(); 
-            string operflag = dt.Cstatus;
-            
-            if (operflag == Constant.SynerginsLog_Cstatus_Complete || operflag == Constant.SynerginsLog_Cstatus_Wait)
-            {
-                operflag = "1";
-                finishTime = DateTime.Now;
-            }
-            else if (operflag == Constant.SynerginsLog_Cstatus_Error)
-            {
-                operflag = "3";
-            }
-            else if (operflag == Constant.SynerginsLog_Cstatus_NoDeal)
-            {
-                operflag = "0";
-            }
-            else
-            {
-                operflag = "2";
-            }
-             
- 
-            StringBuilder strSql = new StringBuilder();
-            strSql.Append("update " + headtable + " set ");
-            if (!string.IsNullOrEmpty(dt.Cvoucherno))
-            {
-                strSql.Append(" cRdCode = '" + dt.Cvoucherno + "',  ");
-
-            } 
-            if (finishTime == null)
-            {
-                strSql.Append(" finishTime = null,  ");
-            }
-            else
-            {
-                strSql.Append(" finishTime = '" + finishTime + "',  ");
-            }
-            strSql.Append(" operflag = " + operflag + "  ");
-            strSql.Append(" where id= " + U8.Interface.Bus.Comm.Convert.ConvertDbValueFromPro(dt.Id,"string") + " ");
-
-            int rows = DbHelperSQL.ExecuteSql(strSql.ToString());
-
-            return rows; 
-
-        }
-
-
-        //修改日志
-        public override int Update(Model.Synergismlogdt dt)
-        {
-
-            string operflag = dt.Cstatus;
-            if (operflag == Constant.SynergisnLogDT_Cstatus_Complete)
-            {
-                operflag = "1";
-            }
-            else if (operflag == Constant.SynergisnLogDT_Cstatus_Error)
-            {
-                operflag = "3";
-            }
-            else if (operflag == Constant.SynergisnLogDT_Cstatus_NoDeal)
-            {
-                operflag = "0";
-            }
-            else if (operflag == Constant.SynergisnLogDT_Cstatus_Delete)
-            {
-                operflag = "1";
-            }
-            else
-            {
-                operflag = "2";
-            }
- 
-            StringBuilder strSql = new StringBuilder(); 
-
-            strSql.Append("update " + headtable + " set ");
-            if (!string.IsNullOrEmpty(dt.Cvoucherno))
-            {
-                strSql.Append(" cRdCode = '" + dt.Cvoucherno + "',  ");
-
-            }  
-            strSql.Append(" operflag = " + operflag + ",  ");
-            strSql.Append(" cerrordesc = '" + dt.Cerrordesc + "'  ");
-            strSql.Append(" where id=" + U8.Interface.Bus.Comm.Convert.ConvertDbValueFromPro(dt.Id,"string") + " ");
-
-            int rows = DbHelperSQL.ExecuteSql(strSql.ToString());
-
-            return rows;
-        }
-
-
-        #endregion
-
-
- 
- 
-
-
     }
 }
+

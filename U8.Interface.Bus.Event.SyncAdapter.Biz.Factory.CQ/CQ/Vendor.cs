@@ -1,50 +1,63 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using MSXML2;
-
-
-namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ 
+﻿namespace U8.Interface.Bus.Event.SyncAdapter.Biz.Factory.CQ
 {
-    class Vendor:BizBase 
+    using ADODB;
+    using MSXML2;
+    using System;
+    using System.Linq;
+    using U8.Interface.Bus.Event.SyncAdapter.Biz;
+
+    internal class Vendor : BizBase
     {
- 
-
-        public Vendor(ref ADODB.Connection conn, IXMLDOMDocument2 doc, string ufConnStr)
-            : base(conn, ufConnStr)
+        public Vendor(ref Connection conn, IXMLDOMDocument2 doc, string ufConnStr) : base(conn, ufConnStr)
         {
-
-            oracleTableName = "MES_CQ_Vendor";
-            oraclePriKey = "cvencode";
-            ufTableName = "Vendor";
-            ufPriKey = "cvencode"; 
-
-            l.Add(new BaseMode("id", null, null, "id", Guid.NewGuid().ToString(), null, null)); 
-            l.Add(new BaseMode("cvencode", GetNodeValue(doc, "/vendor/cvencode"), "/vendor/cvencode", "cvencode", GetNodeValue(doc, "/vendor/cvencode"), null, null));
-            l.Add(new BaseMode("cVenName", GetNodeValue(doc, "/vendor/cvenname"), "/vendor/cvenname", "cvenname", GetNodeValue(doc, "/vendor/cvenname"), null, null));
-            l.Add(new BaseMode("cvccode", GetNodeValue(doc, "/vendor/cvccode"), "/vendor/cvccode", "cvccode", GetNodeValue(doc, "/vendor/cvccode"), null, null));
-            l.Add(new BaseMode("cvenperson", GetNodeValue(doc, "/vendor/cvenperson"), "/vendor/cvenperson","cVenContact", GetNodeValue(doc, "/vendor/cvenperson"), null, null));
-            l.Add(new BaseMode("cvenhand", GetNodeValue(doc, "/vendor/cvenhand"), "/vendor/cvenhand", "cVenContactPhone", GetNodeValue(doc, "/vendor/cvenhand"), null, null)); 
- 
-
+            base.oracleTableName = "MES_CQ_Vendor";
+            base.oraclePriKey = "cvencode";
+            base.ufTableName = "Vendor";
+            base.ufPriKey = "cvencode";
+            base.l.Add(new BaseMode("id", null, null, "id", Guid.NewGuid().ToString(), null, null));
+            base.l.Add(new BaseMode("cvencode", base.GetNodeValue(doc, "/vendor/cvencode"), "/vendor/cvencode", "cvencode", base.GetNodeValue(doc, "/vendor/cvencode"), null, null));
+            base.l.Add(new BaseMode("cVenName", base.GetNodeValue(doc, "/vendor/cvenname"), "/vendor/cvenname", "cvenname", base.GetNodeValue(doc, "/vendor/cvenname"), null, null));
+            base.l.Add(new BaseMode("cvccode", base.GetNodeValue(doc, "/vendor/cvccode"), "/vendor/cvccode", "cvccode", base.GetNodeValue(doc, "/vendor/cvccode"), null, null));
+            base.l.Add(new BaseMode("cvenperson", base.GetNodeValue(doc, "/vendor/cvenperson"), "/vendor/cvenperson", "cVenContact", base.GetNodeValue(doc, "/vendor/cvenperson"), null, null));
+            base.l.Add(new BaseMode("cvenhand", base.GetNodeValue(doc, "/vendor/cvenhand"), "/vendor/cvenhand", "cVenContactPhone", base.GetNodeValue(doc, "/vendor/cvenhand"), null, null));
         }
 
-         
+        public override object Delete()
+        {
+            if (base.bSaveOper)
+            {
+                base.l.Add(new BaseMode("opertype", null, null, "opertype", "2", "string", "string"));
+                return base.Insert();
+            }
+            return base.Delete();
+        }
 
+        public override object Insert()
+        {
+            if (base.bNoCase)
+            {
+                base.Delete();
+            }
+            base.l.Add(new BaseMode("opertype", null, null, "opertype", "0", "string", "string"));
+            return base.Insert();
+        }
 
-        /// <summary>
-        /// xml "<vendor><cvencode1>1</cvencode1><cVenCode2>2</cVenCode2></vendor>\r\n"
-        /// 1并到2
-        /// </summary>
-        /// <param name="doc"></param>
-        /// <returns></returns>
         public object LinkMerge(IXMLDOMDocument2 doc)
         {
-            l.Remove(l.First(e => e.UfColumnName.Equals(ufPriKey)));
-            l.Add(new BaseMode(ufPriKey, GetNodeValue(doc, "/vendor/cvencode1"), "/vendor/cvencode1", "cvencode", GetNodeValue(doc, "/vendor/cvencode1"), null, null)); 
-            return base.Delete(); 
+            base.l.Remove(Enumerable.First<BaseMode>(base.l, (Func<BaseMode, bool>) (e => e.get_UfColumnName().Equals(base.ufPriKey))));
+            base.l.Add(new BaseMode(base.ufPriKey, base.GetNodeValue(doc, "/vendor/cvencode1"), "/vendor/cvencode1", "cvencode", base.GetNodeValue(doc, "/vendor/cvencode1"), null, null));
+            return base.Delete();
+        }
+
+        public override object Update()
+        {
+            if (base.bNoCase)
+            {
+                base.Delete();
+            }
+            base.l.Add(new BaseMode("opertype", null, null, "opertype", "1", "string", "string"));
+            return base.Update();
         }
     }
 }
+
